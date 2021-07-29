@@ -136,8 +136,8 @@ JOIN covid_vac AS vac
 WHERE dea.location like '%States%'
 ORDER BY 3
 
--- Total Population vs Vaccinations
--- Shows Percentage of Population that has recieved at least one Covid Vaccine
+-- Total Population vs Vaccinations and rolling vacinations
+
 
 SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
 SUM(CAST(vac.new_vaccinations AS INT)) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) 
@@ -146,6 +146,7 @@ FROM covid_death AS dea
 JOIN covid_vac AS vac
 	ON dea.location = vac.location
 	AND dea.date = vac.date
+WHERE dea.continent is not null
 ORDER BY 2,3
 
 -- Creating a temporary table using "With" clause
