@@ -1,0 +1,214 @@
+/*
+Covid 19 Data Exploration 
+*/
+
+-- Selecting all from each table and ordering by columns 3(location) and 4(date)
+
+SELECT *
+FROM covid_death
+WHERE continent is not null
+ORDER BY 3,4 
+
+SELECT *
+FROM covid_vac
+WHERE continent is not null
+ORDER BY 3,4 
+
+
+-- Getting comfortable with data that will be used later
+-- Looking at cases, deaths and populations for different countries
+
+SELECT Location, date, total_cases, new_cases, total_deaths, population
+FROM covid_death
+WHERE continent is not null
+ORDER BY 1,2 
+
+
+-- Total Cases vs Total Deaths
+-- Shows likelihood of dying if you contract covid in your country, rounded to 2 decimal places
+
+SELECT Location, date, total_cases,total_deaths, ROUND((total_deaths/total_cases)*100,2) 
+AS DeathPercentage
+FROM covid_death
+WHERE continent is not null
+ORDER BY 1,2 
+
+
+-- Total Cases vs Total Deaths
+-- Shows likelihood of dying if you contract covid in United States
+
+SELECT Location, date, total_cases,total_deaths, ROUND((total_deaths/total_cases)*100,2) 
+AS DeathPercentage
+FROM covid_death
+WHERE location like '%States%'
+AND continent is not null
+ORDER BY 1,2 
+
+
+-- Total Cases vs Population
+-- Shows what percentage of population infected with Covid
+
+SELECT Location, date, Population, total_cases,  ROUND((total_cases/population)*100,2) 
+AS PercentPopulationInfected 
+FROM covid_death
+WHERE continent is not null
+ORDER BY 1,2 
+
+
+
+-- Total Cases vs Population of United States
+-- Shows what percentage of population infected with Covid
+
+SELECT Location, date, Population, total_cases,  ROUND((total_cases/population)*100,2) 
+AS PercentPopulationInfected 
+FROM covid_death
+WHERE location like '%States%'
+AND continent is not null
+ORDER BY 1,2 
+
+
+-- Countries with Highest Infection Rate compared to Population
+
+Select Location, Population, MAX(total_cases) as HighestInfectionCount,
+ROUND(Max((total_cases/population))*100, 2) as PercentPopulationInfected
+From covid_death
+WHERE continent is not null
+GROUP BY Location, Population
+ORDER BY PercentPopulationInfected desc
+
+
+-- Countries with Highest Death Count per Population
+
+SELECT location, MAX(total_deaths) as total_death_count
+FROM covid_death
+WHERE continent is not null
+AND total_deaths is not null
+GROUP BY location
+ORDER BY total_death_count DESC
+
+
+
+-- Breaking down by contnent and showing contintents with the highest death count per population
+
+SELECT continent, MAX(cast(Total_deaths as int)) as TotalDeathCount
+FROM covid_death
+WHERE continent is not null
+AND total_deaths is not null
+GROUP BY continent
+ORDER BY TotalDeathCount DESC
+
+
+
+-- Global numbers
+
+Select SUM(new_cases) as total_cases, SUM(cast(new_deaths as int)) as total_deaths, 
+ROUND(SUM(cast(new_deaths as int))/SUM(New_Cases)*100, 3) as DeathPercentage
+FROM covid_death
+WHERE continent is not null 
+order by 1,2
+
+-- Testing the JOIN function
+
+SELECT *
+FROM covid_death AS dea
+JOIN covid_vac AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+
+-- New vacinations per day in the United States
+
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+FROM covid_death AS dea
+JOIN covid_vac AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+WHERE dea.location like '%States%'
+ORDER BY 3
+
+-- Total Population vs Vaccinations
+-- Shows Percentage of Population that has recieved at least one Covid Vaccine
+
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(CAST(vac.new_vaccinations AS INT)) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) 
+AS Rolling_People_Vaccinated
+FROM covid_death AS dea
+JOIN covid_vac AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+ORDER BY 2,3
+
+-- Creating a temporary table using "With" clause
+
+WITH PopvsVac(continent, location, date, population, new_vaccinations, Rolling_People_Vaccinated)
+AS 
+(
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(CAST(vac.new_vaccinations AS INT)) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) 
+AS Rolling_People_Vaccinated
+FROM covid_death AS dea
+JOIN covid_vac AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+)
+SELECT *
+FROM PopvsVac
+
+-- Using CTE to perform Calculation on Partition By in previous query
+
+WITH PopvsVac(continent, location, date, population, new_vaccinations, Rolling_People_Vaccinated)
+AS 
+(
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations,
+SUM(CAST(vac.new_vaccinations AS INT)) OVER (PARTITION BY dea.location ORDER BY dea.location, dea.date) 
+AS Rolling_People_Vaccinated
+FROM covid_death AS dea
+JOIN covid_vac AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+)
+SELECT *, ROUND((Rolling_People_Vaccinated/population)*100,3)
+FROM PopvsVac
+
+
+-- Using Temp Table to perform Calculation on Partition By in previous query
+
+DROP Table if exists PercentPopulationVaccinated
+Create Table PercentPopulationVaccinated
+(
+Continent varchar(255),
+Location varchar(255),
+Date date,
+Population numeric,
+New_vaccinations numeric,
+RollingPeopleVaccinated numeric
+)
+
+Insert into PercentPopulationVaccinated
+Select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+, SUM(CAST(vac.new_vaccinations AS INT)) OVER (Partition by dea.Location Order by dea.location, dea.Date) 
+as RollingPeopleVaccinated
+From covid_death AS dea
+Join covid_vac AS vac
+	On dea.location = vac.location
+	and dea.date = vac.date
+  
+Select *, (RollingPeopleVaccinated/Population)*100
+From PercentPopulationVaccinated
+
+
+
+
+-- Creating View to store data for later visualizations
+
+Create View PercentPopVaccinated AS
+Select dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+, SUM(CAST(vac.new_vaccinations AS INT)) OVER (Partition by dea.Location Order by dea.location, dea.Date)
+AS RollingPeopleVaccinated
+From covid_death AS dea
+Join covid_vac AS vac
+	On dea.location = vac.location
+	and dea.date = vac.date
+where dea.continent is not null
+
+SELECT *
+FROM PercentPopVaccinated
