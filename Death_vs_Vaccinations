@@ -166,8 +166,9 @@ JOIN covid_vac AS vac
 	ON dea.location = vac.location
 	AND dea.date = vac.date
 )
-SELECT *, ROUND((Rolling_People_Vaccinated/population)*100,3)
+SELECT *, ROUND((Rolling_People_Vaccinated/population)*100,3) AS percent_pop_vaccinated
 FROM PopvsVac
+WHERE continent is not null
 
 
 -- Using Temp Table to perform Calculation on Partition By in previous query
