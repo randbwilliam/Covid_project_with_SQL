@@ -114,6 +114,17 @@ FROM covid_death AS dea
 JOIN covid_vac AS vac
 	ON dea.location = vac.location
 	AND dea.date = vac.date
+	
+	
+-- join showing global new vaccinations per country
+
+SELECT dea.continent, dea.location, dea.date, dea.population, vac.new_vaccinations
+FROM covid_death AS dea
+JOIN covid_vac AS vac
+	ON dea.location = vac.location
+	AND dea.date = vac.date
+ORDER BY 1,2,3
+
 
 -- New vacinations per day in the United States
 
