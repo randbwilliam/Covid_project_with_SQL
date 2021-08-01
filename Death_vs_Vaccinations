@@ -107,6 +107,17 @@ FROM covid_death
 WHERE continent is not null 
 order by 1,2
 
+-- Total vaccination count per country
+
+SELECT location, MAX(total_vaccinations) as total_vac_count
+FROM covid_vac
+WHERE continent is not null
+AND total_vaccinations is not null
+GROUP BY location
+ORDER BY total_vac_count DESC
+
+
+
 -- Testing the JOIN function
 
 SELECT *
